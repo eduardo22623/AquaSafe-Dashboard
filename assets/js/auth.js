@@ -41,6 +41,24 @@ const Auth = {
         // Forms
         document.getElementById('btn-login-submit').addEventListener('click', () => this.handleLogin());
         document.getElementById('btn-register-submit').addEventListener('click', () => this.handleRegister());
+
+        // Password Visibility Toggles
+        document.querySelectorAll('.btn-toggle-pass').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = btn.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    btn.innerHTML = '<i data-lucide="eye-off" width="20"></i>';
+                } else {
+                    input.type = 'password';
+                    btn.innerHTML = '<i data-lucide="eye" width="20"></i>';
+                }
+                lucide.createIcons();
+            });
+        });
     },
 
     showSelection() {
@@ -142,34 +160,64 @@ const Auth = {
     },
 
     async handleRegister() {
-        const name = document.getElementById('reg-name').value;
-        const email = document.getElementById('reg-email').value;
-        const pass = document.getElementById('reg-pass').value;
+        const email = document.getElementById('reg-email').value.trim();
+        const password = document.getElementById('reg-password').value.trim();
+        const fullName = document.getElementById('reg-name').value.trim();
+        const phone = document.getElementById('reg-phone')?.value.trim() || '';
+        const address = document.getElementById('reg-address')?.value.trim() || '';
 
-        if (!name || !email || !pass) {
-            alert('Todos los campos son obligatorios');
+        // Validation
+        if (!email || !password || !fullName || !phone || !address) {
+            alert('⚠️ Por favor complete TODOS los campos obligatorios para continuar.');
             return;
         }
 
+        const btn = document.getElementById('btn-register-submit');
+        const originalText = btn.innerHTML;
+
+        // Loading State
+        btn.disabled = true;
+        btn.innerHTML = `<div class="flex items-center justify-center gap-2"><div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Registrando...</div>`;
+
         try {
-            const { error } = await supabaseClient.auth.signUp({
+            // 1. Sign Up
+            const { data, error } = await supabaseClient.auth.signUp({
                 email,
-                password: pass,
+                password,
                 options: {
-                    data: {
-                        full_name: name,
-                        role: 'operator' // Default role
-                    }
+                    data: { full_name: fullName }
                 }
             });
 
             if (error) throw error;
 
-            alert('Registro exitoso. Por favor inicie sesión.');
-            this.showLogin('user');
+            // 2. Update Profile
+            if (data?.user) {
+                const { error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .update({
+                        full_name: fullName,
+                        phone: phone,
+                        address: address
+                    })
+                    .eq('id', data.user.id);
+
+                if (profileError) {
+                    console.error("Error updating profile details:", profileError);
+                    // Don't throw here, basics worked.
+                }
+            }
+
+            // Success
+            alert('✅ ¡Cuenta creada exitosamente!\nPor favor inicia sesión con tu nueva cuenta.');
+            this.showLogin('user'); // Go to login
 
         } catch (e) {
-            alert('Register Error: ' + e.message);
+            alert('❌ Error al registrar: ' + e.message);
+        } finally {
+            // Reset Button
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         }
-    }
+    },
 };

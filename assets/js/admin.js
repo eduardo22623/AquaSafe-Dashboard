@@ -1,6 +1,5 @@
-
 // Admin Module
-// Handles User Management and Threshold configuration
+// Handles Device Monitor and simple User Management
 
 const Admin = {
     state: {
@@ -9,117 +8,107 @@ const Admin = {
     },
 
     init() {
-        document.getElementById('btn-save-thresholds').addEventListener('click', () => this.saveThresholds());
-        document.getElementById('btn-refresh-users').addEventListener('click', () => this.fetchUsers());
+        // Init listeners if elements exist
+        const refreshBtn = document.getElementById('btn-refresh-monitor');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.fetchDeviceMonitor());
+        }
     },
 
-    async fetchUsers() {
-        const tableBody = document.getElementById('admin-users-table');
-        tableBody.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">Actualizando lista...</td></tr>';
+    // --- Main Feature: Device Monitor ---
+    async fetchDeviceMonitor() {
+        const tableBody = document.getElementById('admin-monitor-body');
+        if (!tableBody) return;
+
+        // Loading State
+        tableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500 animate-pulse">Cargando datos...</td></tr>';
 
         try {
-            // Removed .order('created_at') because the column does not exist
             const { data, error } = await supabaseClient
-                .from('profiles')
+                .from('admin_device_monitor')
                 .select('*');
 
             if (error) throw error;
 
-            this.state.users = data;
-            this.renderUsers();
+            this.renderTable(data);
+            this.initRealtime();
 
         } catch (e) {
-            console.error('Error fetching users:', e);
-            tableBody.innerHTML = `<tr><td colspan="4" class="px-4 py-4 text-center text-red-500">Error: ${e.message}</td></tr>`;
+            console.error("Admin Monitor Error:", e);
+            tableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-500">Error: ${e.message}</td></tr>`;
         }
     },
 
-    renderUsers() {
-        const tableBody = document.getElementById('admin-users-table');
+    renderTable(data) {
+        const tableBody = document.getElementById('admin-monitor-body');
         tableBody.innerHTML = '';
 
-        if (this.state.users.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-600">No se encontraron usuarios</td></tr>';
+        if (!data || data.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No hay dispositivos registrados.</td></tr>';
             return;
         }
 
-        this.state.users.forEach(user => {
+        data.forEach(row => {
             const tr = document.createElement('tr');
-            tr.className = 'hover:bg-red-950/10 transition group';
+            tr.className = 'border-b border-gray-800 hover:bg-white/5 transition-colors';
 
-            // Name & Email
-            const nameCell = document.createElement('td');
-            nameCell.className = 'px-4 py-3';
-            nameCell.innerHTML = `
-                <div class="font-medium text-white">${user.full_name || 'Sin Nombre'}</div>
-                <div class="text-gray-600 text-xs">${user.email || 'Sin Email'}</div> 
+            // Format Status
+            let statusHtml = '<span class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-500">Sin Datos</span>';
+            if (row.last_reading_at) {
+                if (row.is_potable) {
+                    statusHtml = '<span class="px-2 py-1 rounded text-xs bg-green-900/50 text-green-400 border border-green-500/30">POTABLE</span>';
+                } else {
+                    statusHtml = '<span class="px-2 py-1 rounded text-xs bg-red-900/50 text-red-500 border border-red-500/30 animate-pulse">NO POTABLE</span>';
+                }
+            }
+
+            // Format Date
+            const dateStr = row.last_reading_at ? new Date(row.last_reading_at).toLocaleString() : '--';
+
+            tr.innerHTML = `
+                <td class="p-3 text-white font-medium break-all text-xs">
+                    <div>${row.client_name || 'Sin Asignar'}</div>
+                    <div class="text-[10px] text-gray-500 font-normal mt-1">${row.client_address || 'Sin Dirección'}</div>
+                </td>
+                <td class="p-3 text-gray-400 text-sm break-all">${row.contact_info || '--'}</td>
+                <td class="p-3 text-cyan-400 font-mono text-xs">${row.mac_address}</td>
+                <td class="p-3 text-gray-300">
+                    <div class="flex flex-col text-xs space-y-1">
+                        <span class="flex justify-between w-24"><span>pH:</span> <b class="text-white">${row.last_ph ?? '--'}</b></span>
+                        <span class="flex justify-between w-24"><span>Turb:</span> <b class="text-white">${row.last_turbidity ?? '--'}</b></span>
+                        <span class="flex justify-between w-24"><span>TDS:</span> <b class="text-white">${row.last_tds ?? '--'}</b></span>
+                        <span class="text-[10px] text-gray-600 border-t border-gray-800 pt-1 mt-1">${dateStr}</span>
+                    </div>
+                </td>
+                <td class="p-3 text-center">${statusHtml}</td>
             `;
-
-            // Role Badge
-            const roleCell = document.createElement('td');
-            roleCell.className = 'px-4 py-3';
-            const roleColor = user.role === 'admin' ? 'text-red-400 border-red-900/50 bg-red-900/20' : 'text-blue-400 border-blue-900/50 bg-blue-900/20';
-            roleCell.innerHTML = `<span class="px-2 py-1 rounded text-xs border ${roleColor}">${user.role ? user.role.toUpperCase() : 'N/A'}</span>`;
-
-            // Action (Select)
-            const actionCell = document.createElement('td');
-            actionCell.className = 'px-4 py-3';
-
-            const select = document.createElement('select');
-            select.className = `px-2 py-1 rounded text-xs border bg-black focus:outline-none cursor-pointer border-gray-700 text-gray-300 hover:border-gray-500`;
-            select.innerHTML = `
-                <option value="operator" ${user.role === 'operator' ? 'selected' : ''}>Operator</option>
-                <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-            `;
-            // Only allow changing if not self? -> Logic handling in update
-            select.onchange = (e) => this.updateRole(user.id, e.target.value, user.full_name);
-
-            actionCell.appendChild(select);
-
-            // Status
-            const statusCell = document.createElement('td');
-            statusCell.className = 'px-4 py-3 text-green-500 text-xs uppercase font-bold';
-            statusCell.innerText = 'Activo';
-
-            tr.appendChild(nameCell);
-            tr.appendChild(roleCell);
-            tr.appendChild(actionCell);
-            tr.appendChild(statusCell);
-
             tableBody.appendChild(tr);
         });
     },
 
-    async updateRole(userId, newRole, userName) {
-        if (!confirm(`¿Estás seguro de cambiar el rol de ${userName} a ${newRole.toUpperCase()}?`)) {
-            this.fetchUsers(); // Revert UI
-            return;
-        }
+    initRealtime() {
+        if (this.subscription) return;
 
-        try {
-            const { error } = await supabaseClient
-                .from('profiles')
-                .update({ role: newRole })
-                .eq('id', userId);
-
-            if (error) throw error;
-
-            alert(`Rol actualizado exitosamente.`);
-            this.fetchUsers(); // Refresh list
-
-        } catch (e) {
-            alert(`Error actualizando rol: ${e.message}`);
-            this.fetchUsers();
-        }
+        // Listen for new measurements to refresh table
+        this.subscription = supabaseClient
+            .channel('admin_monitor_updates')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mediciones' }, () => {
+                // Debounce simple
+                setTimeout(() => this.fetchDeviceMonitor(), 500);
+            })
+            // Listen for device changes
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'devices' }, () => {
+                setTimeout(() => this.fetchDeviceMonitor(), 500);
+            })
+            .subscribe();
     },
 
-    saveThresholds() {
-        const phMin = document.getElementById('admin-ph-min').value;
-        const phMax = document.getElementById('admin-ph-max').value;
-        const tdsMax = document.getElementById('admin-tds-max').value;
-
-        // In a real app we'd save this to DB. For now we just verify input and show success.
-        console.log('Saving thresholds:', { phMin, phMax, tdsMax });
-        alert('Configuración global actualizada (Simulación)');
+    // Placeholder to avoid errors if main.js calls fetchUsers
+    async fetchUsers() {
+        // Redirect to monitor fetch
+        await this.fetchDeviceMonitor();
     }
 };
+
+// Expose to window
+window.Admin = Admin;

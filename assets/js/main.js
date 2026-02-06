@@ -93,24 +93,83 @@ async function handleAuthChange(session) {
             id: session.user.id,
             email: session.user.email,
             name: profile?.full_name || session.user.email.split('@')[0],
-            role: profile?.role || 'operator'
+            role: profile?.role || 'operator',
+            deviceId: null // Will fetch
         };
+
+        // Fetch Device
+        const { data: device } = await supabaseClient
+            .from('devices')
+            .select('mac_address')
+            .eq('user_id', currentUser.id)
+            .single();
+
+        if (device) currentUser.deviceId = device.mac_address;
 
         updateUserUI();
         showView('dashboard');
         initRealtime();
+        resetInactivityTimer(); // Start timer
     } else {
         currentUser = null;
         showView('landing');
+        clearTimeout(inactivityTimeout); // Stop timer
     }
 }
 
 function updateUserUI() {
     if (!currentUser) return;
-    document.getElementById('user-name-display').textContent = currentUser.name;
+    document.getElementById('user-name-display').innerText = currentUser.name;
     document.getElementById('profile-name').value = currentUser.name;
     document.getElementById('profile-email').value = currentUser.email;
     document.getElementById('profile-role').innerText = currentUser.role.toUpperCase();
+
+    // Display Admin-specific controls or hide User-specific ones
+    const deviceSection = document.getElementById('device-management-section');
+    const simSection = document.getElementById('simulation-section');
+    const dbAdminContent = document.getElementById('dashboard-admin-content'); // New
+    const dbUserContent = document.getElementById('dashboard-user-content');   // New
+
+    if (currentUser.role === 'admin') {
+        if (deviceSection) deviceSection.classList.add('hidden');
+        if (simSection) simSection.classList.add('hidden');
+
+        // --- Dashboard Clean-up for Admin ---
+        if (dbAdminContent) dbAdminContent.classList.remove('hidden');
+        if (dbUserContent) dbUserContent.classList.add('hidden');
+
+    } else {
+        if (deviceSection) deviceSection.classList.remove('hidden');
+        if (simSection) simSection.classList.remove('hidden');
+
+        // --- Dashboard Restore for User ---
+        if (dbAdminContent) dbAdminContent.classList.add('hidden');
+        if (dbUserContent) dbUserContent.classList.remove('hidden');
+
+        // Only update device UI if visible (User)
+        const deviceInput = document.getElementById('device-mac');
+        const deviceBtn = document.getElementById('btn-save-device');
+
+        if (currentUser.deviceId) {
+            deviceInput.value = currentUser.deviceId;
+            deviceInput.disabled = true;
+            deviceInput.classList.add('opacity-50', 'cursor-not-allowed');
+
+            deviceBtn.disabled = true;
+            deviceBtn.innerText = 'Vinculado';
+            deviceBtn.classList.remove('bg-cyan-600', 'hover:bg-cyan-500');
+            deviceBtn.classList.add('bg-gray-700', 'text-gray-400', 'cursor-not-allowed');
+        } else {
+            deviceInput.value = '';
+            deviceInput.disabled = false;
+            deviceInput.classList.remove('opacity-50', 'cursor-not-allowed');
+
+            deviceBtn.disabled = false;
+            deviceBtn.innerText = 'Guardar';
+            deviceBtn.classList.add('bg-cyan-600', 'hover:bg-cyan-500');
+            deviceBtn.classList.remove('bg-gray-700', 'text-gray-400', 'cursor-not-allowed');
+        }
+    }
 
     // Show Admin tab if admin
     const adminBtn = document.getElementById('btn-tab-admin');
@@ -156,14 +215,24 @@ async function initRealtime() {
     const channel = supabaseClient
         .channel('mediciones_updates')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mediciones' }, payload => {
-            console.log('New reading!', payload.new);
-            addReading(payload.new);
+            console.log('New reading received:', payload.new);
+            // Verify if reading belongs to current user's device
+            if (currentUser && currentUser.deviceId && payload.new.device_id === currentUser.deviceId) {
+                addReading(payload.new);
+                // Also trigger a simulated notification or highlight if needed
+            } else if (currentUser && currentUser.role === 'admin') {
+                // Admin sees all? Or maybe just current view?
+                // For now, let's assume Admin Dashboard shows all or needs specific filter.
+                // If simple admin view, add it.
+                addReading(payload.new);
+            }
         })
-        .subscribe(status => {
+        .subscribe((status) => {
+            console.log("Realtime Status:", status);
             if (status === 'SUBSCRIBED') {
                 updateDbStatus('connected');
             } else {
-                updateDbStatus('error');
+                // updateDbStatus('error'); // Don't show error immediately, as it might just be connecting
             }
         });
 }
@@ -171,11 +240,24 @@ async function initRealtime() {
 async function fetchData() {
     updateDbStatus('checking');
     try {
-        const { data, error } = await supabaseClient
+        let query = supabaseClient
             .from('mediciones')
             .select('*')
             .order('created_at', { ascending: false })
             .limit(20);
+
+        // Filter by Device if Operator and has device
+        if (currentUser && currentUser.role !== 'admin' && currentUser.deviceId) {
+            query = query.eq('device_id', currentUser.deviceId);
+        } else if (currentUser && currentUser.role !== 'admin' && !currentUser.deviceId) {
+            // No device linked
+            updateDbStatus('connected');
+            currentReadings = [];
+            updateDashboard();
+            return;
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 
@@ -195,9 +277,9 @@ async function fetchData() {
 function formatReading(d) {
     return {
         timestamp: new Date(d.created_at).toLocaleTimeString(),
-        ph: (d.ph || 0).toFixed(2),
-        turbidity: (d.turbidez || 0).toFixed(1),
-        tds: (d.tds || 0).toFixed(0),
+        ph: Number(d.ph || 0),
+        turbidity: Number(d.turbidez || 0),
+        tds: Number(d.tds || 0),
         status: d.es_potable ? 'Potable' : 'No Potable'
     };
 }
@@ -206,32 +288,30 @@ function addReading(raw) {
     const reading = formatReading(raw);
     currentReadings.push(reading);
     if (currentReadings.length > 20) currentReadings.shift();
-    updateDashboard();
+    updateDashboard(); // This updates the UI
 }
 
 function updateDbStatus(status) {
     dbStatus = status;
-    const el = document.getElementById('db-status');
-    const dot = document.getElementById('db-status-dot');
-    const text = document.getElementById('db-status-text');
+    const el = document.getElementById('db-status-indicator');
+    if (!el) return;
 
-    // Reset classes
-    el.className = 'flex items-center space-x-2 text-xs font-bold uppercase border px-3 py-2 rounded bg-opacity-10 shadow-[0_0_10px_rgba(0,0,0,0.2)] transition-colors';
-    dot.className = 'w-2 h-2 rounded-full';
+    // Reset base classes
+    el.className = 'px-3 py-1 rounded border text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all';
 
     if (status === 'connected') {
-        el.classList.add('text-green-500', 'border-green-500', 'bg-green-500');
-        dot.classList.add('bg-green-500', 'animate-pulse');
-        text.textContent = 'CONEXIÓN: EXITOSA';
+        el.className += ' border-green-500/50 bg-green-900/20 text-green-400';
+        el.innerHTML = '<i data-lucide="wifi" width="14"></i> CONECTADO';
     } else if (status === 'error') {
-        el.classList.add('text-red-500', 'border-red-500', 'bg-red-500');
-        dot.classList.add('bg-red-500');
-        text.textContent = 'ERROR DE CONEXIÓN';
+        el.className += ' border-red-500/50 bg-red-900/20 text-red-400';
+        el.innerHTML = '<i data-lucide="wifi-off" width="14"></i> DESCONECTADO';
     } else {
-        el.classList.add('text-yellow-500', 'border-yellow-500', 'bg-yellow-500');
-        dot.classList.add('bg-yellow-500', 'animate-bounce');
-        text.textContent = 'CONECTANDO...';
+        el.className += ' border-yellow-500/50 bg-yellow-900/20 text-yellow-400 animate-pulse';
+        el.innerHTML = '<i data-lucide="loader-2" width="14" class="animate-spin"></i> CONECTANDO';
     }
+
+    // Refresh icons since we replaced innerHTML
+    if (window.lucide) lucide.createIcons();
 }
 
 function updateDashboard() {
@@ -239,22 +319,38 @@ function updateDashboard() {
 
     const latest = currentReadings[currentReadings.length - 1];
 
-    // Update Gauges (Text for now, or sim)
-    document.getElementById('val-ph').textContent = latest.ph;
-    document.getElementById('val-tds').textContent = latest.tds;
-    document.getElementById('val-turb').textContent = latest.turbidity;
-
     // Update Status
-    const statusEl = document.getElementById('water-status');
-    if (latest.status === 'Potable') {
-        statusEl.innerHTML = `<span class="text-green-400">POTABLE</span>`;
-    } else {
-        statusEl.innerHTML = `<span class="text-red-500 animate-pulse">NO POTABLE</span>`;
+    const statusEl = document.getElementById('water-status-indicator');
+    if (statusEl) {
+        if (latest.status === 'Potable') {
+            statusEl.innerHTML = `<span class="text-green-400 flex items-center gap-2"><i data-lucide="check-circle" width="16"></i> POTABLE</span>`;
+        } else {
+            statusEl.innerHTML = `<span class="text-red-500 animate-pulse flex items-center gap-2"><i data-lucide="alert-triangle" width="16"></i> NO POTABLE</span>`;
+        }
+        if (window.lucide) lucide.createIcons();
     }
 
-    // Update Charts
+    // Update Charts (and Gauges text)
     updateCharts(currentReadings);
 }
+
+let inactivityTimeout;
+const INACTIVITY_LIMIT = 15 * 60 * 1000; // 15 Minutes
+
+function resetInactivityTimer() {
+    clearTimeout(inactivityTimeout);
+    if (currentUser) {
+        inactivityTimeout = setTimeout(() => {
+            alert('Su sesión ha expirado por inactividad.');
+            Auth.logout();
+        }, INACTIVITY_LIMIT);
+    }
+}
+
+// Global Event Listeners for inactivity
+['mousemove', 'keydown', 'click', 'scroll'].forEach(evt => {
+    window.addEventListener(evt, resetInactivityTimer);
+});
 
 
 // --- Event Listeners ---
@@ -300,10 +396,146 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-tab-profile').classList.remove('bg-cyan-600', 'text-white', 'shadow-neon-blue');
         document.getElementById('btn-tab-profile').classList.add('bg-gray-800', 'text-gray-500');
 
-        // Load Users
+        // Load Users and Monitor
         Admin.fetchUsers();
     });
 
+    // Refresh Monitor Button
+    // Refresh Monitor Button (Admin Only)
+    const btnRefresh = document.getElementById('btn-refresh-monitor');
+    if (btnRefresh) {
+        btnRefresh.addEventListener('click', () => {
+            Admin.fetchDeviceMonitor();
+        });
+    }
+
     // Icons
     lucide.createIcons();
+
+    // --- Device Management ---
+    const btnSaveDevice = document.getElementById('btn-save-device');
+    btnSaveDevice.addEventListener('click', async () => {
+        const mac = document.getElementById('device-mac').value.trim();
+        if (!mac) return alert('⚠️ Ingrese una dirección MAC válida (Ej: A0:B1:C2:D3:E4:F5).');
+
+        // Visual Feedback
+        const originalText = btnSaveDevice.innerText;
+        btnSaveDevice.innerText = 'Verificando...';
+        btnSaveDevice.disabled = true;
+
+        try {
+            // 1. Check if device exists
+            const { data: existingDevice, error: fetchError } = await supabaseClient
+                .from('devices')
+                .select('*')
+                .eq('mac_address', mac)
+                .maybeSingle(); // Use maybeSingle to avoid error on null
+
+            if (existingDevice) {
+                // Device exists. Check owner.
+                if (existingDevice.user_id && existingDevice.user_id !== currentUser.id) {
+                    throw new Error("⛔ Este dispositivo (MAC) ya pertenece a otro usuario.");
+                }
+
+                // It's mine, just update name/timestamp if needed
+                const { error: updateError } = await supabaseClient
+                    .from('devices')
+                    .update({
+                        name: `Dispositivo de ${currentUser.name}`,
+                        // user_id is already correct
+                    })
+                    .eq('mac_address', mac);
+
+                if (updateError) throw updateError;
+                alert('✅ Dispositivo confirmado. Ya estaba vinculado a tu cuenta.');
+
+            } else {
+                // Device does not exist. Create it.
+                const { error: insertError } = await supabaseClient
+                    .from('devices')
+                    .insert({
+                        mac_address: mac,
+                        user_id: currentUser.id,
+                        name: `Dispositivo de ${currentUser.name}`
+                    });
+
+                if (insertError) {
+                    // Check specifically for Duplicate Key (in case race condition or RLS hidden)
+                    if (insertError.code === '23505') {
+                        throw new Error("⛔ Este dispositivo ya está registrado por otro usuario.");
+                    }
+                    throw insertError;
+                }
+                alert('✅ Nuevo dispositivo registrado exitosamente.');
+            }
+
+            // Critical: Update Local State immediately
+            currentUser.deviceId = mac;
+
+            // Lock UI immediately
+            updateUserUI(); // Fixed function name
+
+            // Force refresh of Realtime Subscription AND fetch data immediately
+            if (window.subscription) supabaseClient.removeChannel(window.subscription);
+            initRealtime();
+            fetchData(); // <-- Explicit fetch to update charts/gauges immediately
+
+        } catch (e) {
+            console.error("Device Link Error:", e);
+            // Show detailed error if available
+            const msg = e.message || JSON.stringify(e) || 'Error desconocido';
+            alert('❌ No se pudo vincular: ' + msg);
+        } finally {
+            btnSaveDevice.innerText = originalText;
+            btnSaveDevice.disabled = false;
+        }
+    });
+
+    // --- Simulator ---
+    const btnSimSend = document.getElementById('btn-sim-send');
+    btnSimSend.addEventListener('click', async () => {
+        // Validation with specific message
+        if (!currentUser || !currentUser.id) return alert('⚠️ Error: Sesión no válida. Recargue la página.');
+        if (!currentUser.deviceId) return alert('⚠️ Error: No tiene dispositivo vinculado. Use el formulario de arriba primero.');
+
+        // Visual Feedback
+        const originalIcon = btnSimSend.innerHTML;
+        btnSimSend.innerText = 'Enviando...';
+        btnSimSend.disabled = true;
+
+        const ph = parseFloat(document.getElementById('sim-ph').value);
+        const tds = parseInt(document.getElementById('sim-tds').value);
+        const turb = parseFloat(document.getElementById('sim-turb').value);
+
+        // Potability Logic
+        const isPotable = (ph >= 6.5 && ph <= 8.5) && (tds < 500) && (turb < 10);
+
+        try {
+            console.log(`Sending Data -> Device: ${currentUser.deviceId}, User: ${currentUser.id}`);
+
+            const { error } = await supabaseClient
+                .from('mediciones')
+                .insert({
+                    device_id: currentUser.deviceId,
+                    ph: ph,
+                    tds: tds,
+                    turbidez: turb,
+                    es_potable: isPotable
+                });
+
+            if (error) throw error;
+
+            alert('✅ Dato simulado enviado con éxito!');
+
+            // Fallback: Fetch data manually to ensure UI updates even if Realtime is filtered/slow
+            fetchData();
+
+        } catch (e) {
+            console.error('Sim Error:', e);
+            alert('❌ Error enviando dato: ' + (e.message || e.details));
+        } finally {
+            btnSimSend.innerHTML = originalIcon;
+            btnSimSend.disabled = false;
+        }
+    });
 });
