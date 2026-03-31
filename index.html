@@ -55,8 +55,8 @@
     <!-- SIDEBAR -->
     <div id="sidebar" class="hidden h-full flex shrink-0">
         <div id="sidebar-content"
-            class="w-64 bg-gray-900 border-r border-gray-800 transition-all duration-300 flex flex-col z-20 h-full">
-            <div class="p-4 flex items-center justify-between border-b border-gray-800/50">
+            class="w-64 glass-panel border-r border-gray-800/30 transition-all duration-300 flex flex-col z-20 h-full">
+            <div class="p-4 flex items-center justify-between border-b border-gray-800/30">
                 <div class="flex items-center gap-2 overflow-hidden">
                     <div
                         class="w-8 h-8 rounded bg-cyan-500/10 flex items-center justify-center border border-cyan-500/30 shrink-0">
@@ -74,7 +74,13 @@
                     class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 text-gray-500 hover:bg-gray-800 hover:text-gray-200"
                     data-target="dashboard">
                     <i data-lucide="home"></i>
-                    <span class="sidebar-label font-medium text-sm uppercase tracking-wide">Dashboard</span>
+                    <span class="sidebar-label font-medium text-sm uppercase tracking-wide">Panel</span>
+                </button>
+                <button id="btn-nav-reports"
+                    class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 text-gray-500 hover:bg-gray-800 hover:text-cyan-400 font-bold"
+                    data-target="reports">
+                    <i data-lucide="file-bar-chart-2"></i>
+                    <span class="sidebar-label font-medium text-sm uppercase tracking-wide">Reportes</span>
                 </button>
                 <button id="btn-nav-settings"
                     class="nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 text-gray-500 hover:bg-gray-800 hover:text-gray-200"
@@ -88,19 +94,15 @@
                 <button id="btn-logout"
                     class="w-full flex items-center space-x-3 px-4 py-3 text-red-400 hover:bg-red-900/20 hover:text-red-300 rounded-lg transition-colors">
                     <i data-lucide="log-out"></i>
-                    <span class="sidebar-label font-medium text-sm uppercase tracking-wide">Salir</span>
+                    <span class="sidebar-label font-medium text-sm uppercase tracking-wide">Cerrar Sesión</span>
                 </button>
             </div>
         </div>
     </div>
 
     <!-- MAIN CONTENT AREA -->
-    <div class="flex-1 flex flex-col overflow-hidden relative min-w-0">
-
-        <!-- Background Grid -->
-        <div
-            class="absolute inset-0 bg-[linear-gradient(to_right,#0f0f0f_1px,transparent_1px),linear-gradient(to_bottom,#0f0f0f_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none z-0">
-        </div>
+    <div class="flex-1 flex flex-col overflow-hidden relative min-w-0 bg-black/40">
+        <!-- Eliminamos el grid background antiguo ya que styles.css se encarga del fondo global -->
 
         <main class="flex-1 overflow-y-auto p-8 relative z-10 scrollbar-thin">
 
@@ -283,22 +285,33 @@
             </div>
 
             <!-- DASHBOARD VIEW -->
-            <div id="dashboard-view" class="hidden space-y-6 animate-fadeIn">
+            <div id="dashboard-view" class="hidden space-y-8 animate-fadeIn">
                 <!-- Header -->
-                <div class="flex justify-between items-center border-b border-gray-800 pb-4">
+                <div
+                    class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-gray-800/50 pb-6">
                     <div>
-                        <h1 class="text-3xl font-bold text-white font-orbitron">DASHBOARD</h1>
-                        <p class="text-gray-400 text-xs mt-1 uppercase tracking-wider">Bienvenido, <span
-                                id="user-name-display" class="text-cyan-400 font-bold">USUARIO</span></p>
+                        <h1 class="text-4xl font-bold text-white font-orbitron tracking-wider">PANEL</h1>
+                        <p class="text-[10px] mt-1 uppercase tracking-[0.2em] text-gray-400 font-bold">BIENVENIDO, <span
+                                id="user-name-display" class="text-neon-blue">USUARIO</span></p>
                     </div>
-                    <div class="flex items-center gap-4">
-                        <div id="db-status-indicator"
-                            class="px-3 py-1 rounded border border-red-500/50 bg-red-900/20 text-red-400 text-xs font-bold uppercase tracking-wider flex items-center gap-2">
-                            <i data-lucide="wifi-off" width="14"></i> Desconectado
+                    <div class="flex flex-col items-end mt-4 md:mt-0 gap-3">
+                        <div class="flex items-center gap-3">
+                            <div id="device-status-indicator"
+                                class="glass-pill px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hidden transition-all">
+                                <i data-lucide="help-circle" width="14"></i> Dispositivo
+                            </div>
+                            <div id="db-status-indicator"
+                                class="glass-pill px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-all">
+                                <i data-lucide="cloud-off" width="14"></i> DB
+                            </div>
+                            <div id="water-status-indicator"
+                                class="glass-pill px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest transition-all">
+                                --
+                            </div>
                         </div>
-                        <div id="water-status-indicator"
-                            class="px-4 py-2 rounded bg-gray-800 text-gray-500 font-bold font-orbitron tracking-widest border border-gray-700 shadow-lg">
-                            --
+                        <div
+                            class="glass-pill px-4 py-1.5 rounded-full text-gray-400 text-[10px] uppercase font-bold tracking-widest flex items-center gap-2">
+                            <i data-lucide="calendar" width="12"></i> <span id="clock-display">--/--/----, --:--</span>
                         </div>
                     </div>
                 </div>
@@ -324,50 +337,60 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <!-- PH -->
                         <div
-                            class="bg-black/40 border border-gray-800 rounded-2xl p-6 relative overflow-hidden group hover:border-cyan-500/30 transition-all">
-                            <h3 class="text-center text-cyan-400 font-bold text-sm tracking-[0.2em] mb-4 uppercase">
-                                Nivel pH</h3>
-                            <div class="relative h-40 flex justify-center items-center">
+                            class="glass-panel gauge-glow-green rounded-3xl p-6 relative overflow-hidden group transition-all opacity-50 grayscale hover:grayscale-0">
+                            <h3 class="text-center text-white font-bold text-[11px] tracking-[0.2em] mb-4 uppercase">
+                                NIVEL PH <span class="text-[9px] block text-gray-500 mt-1">(Deshabilitado)</span></h3>
+                            <div class="relative h-44 flex justify-center items-center pointer-events-none">
                                 <canvas id="gaugePh"></canvas>
                                 <!-- Optimized Center Value -->
-                                <div class="absolute inset-0 flex flex-col items-center justify-center pt-8">
-                                    <div id="val-ph"
-                                        class="text-4xl font-orbitron font-bold text-white drop-shadow-[0_0_15px_rgba(34,211,238,0.8)]">
+                                <div class="absolute inset-0 flex flex-col items-center justify-start">
+                                    <div id="val-ph" class="text-4xl font-orbitron font-bold text-white drop-shadow-lg"
+                                        style="padding-top: 140px;">
                                         --</div>
-                                    <span class="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Unidad
-                                        pH</span>
+                                    <span class="text-[9px] text-gray-400 uppercase tracking-widest mt-1">Nivel de pH
+                                        Actual</span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- TDS -->
-                        <div
-                            class="bg-black/40 border border-gray-800 rounded-2xl p-6 relative overflow-hidden group hover:border-cyan-500/30 transition-all">
-                            <h3 class="text-center text-cyan-400 font-bold text-sm tracking-[0.2em] mb-4 uppercase">TDS
-                                (ppm)</h3>
-                            <div class="relative h-40 flex justify-center items-center">
+                        <div id="card-tds"
+                            class="glass-panel gauge-glow-cyan rounded-3xl p-6 relative overflow-hidden group transition-all hover:scale-[1.02]">
+                            <h3 id="title-tds"
+                                class="text-center text-white font-bold text-[11px] tracking-[0.2em] mb-4 uppercase flex justify-center items-center gap-2">
+                                <div
+                                    class="w-2 h-2 rounded-full bg-neon-blue animate-pulse shadow-[0_0_10px_rgba(0,243,255,0.8)]">
+                                </div>TDS (PPM)
+                            </h3>
+                            <div class="relative h-44 flex justify-center items-center">
                                 <canvas id="gaugeTds"></canvas>
-                                <div class="absolute inset-0 flex flex-col items-center justify-center pt-8">
+                                <div class="absolute inset-0 flex flex-col items-center justify-start">
                                     <div id="val-tds"
-                                        class="text-4xl font-orbitron font-bold text-white drop-shadow-[0_0_15px_rgba(34,211,238,0.8)]">
+                                        class="text-5xl font-orbitron font-black text-white drop-shadow-[0_0_15px_rgba(0,243,255,0.6)]"
+                                        style="padding-top: 140px;">
                                         --</div>
-                                    <span class="text-[10px] text-gray-500 uppercase tracking-widest mt-1">PPM</span>
+                                    <span
+                                        class="text-[9px] text-gray-400 uppercase tracking-widest mt-2 px-6 text-center leading-tight">Total
+                                        Sólidos Disueltos (PPM)</span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Turbidity -->
                         <div
-                            class="bg-black/40 border border-gray-800 rounded-2xl p-6 relative overflow-hidden group hover:border-purple-500/30 transition-all">
-                            <h3 class="text-center text-purple-400 font-bold text-sm tracking-[0.2em] mb-4 uppercase">
-                                Turbidez (NTU)</h3>
-                            <div class="relative h-40 flex justify-center items-center">
+                            class="glass-panel gauge-glow-purple rounded-3xl p-6 relative overflow-hidden group transition-all opacity-50 grayscale hover:grayscale-0">
+                            <h3 class="text-center text-white font-bold text-[11px] tracking-[0.2em] mb-4 uppercase">
+                                TURBIDEZ (NTU) <span class="text-[9px] block text-gray-500 mt-1">(Deshabilitado)</span>
+                            </h3>
+                            <div class="relative h-44 flex justify-center items-center pointer-events-none">
                                 <canvas id="gaugeTurb"></canvas>
-                                <div class="absolute inset-0 flex flex-col items-center justify-center pt-8">
+                                <div class="absolute inset-0 flex flex-col items-center justify-start">
                                     <div id="val-turb"
-                                        class="text-4xl font-orbitron font-bold text-white drop-shadow-[0_0_15px_rgba(192,132,252,0.8)]">
+                                        class="text-4xl font-orbitron font-bold text-white drop-shadow-lg"
+                                        style="padding-top: 140px;">
                                         --</div>
-                                    <span class="text-[10px] text-gray-500 uppercase tracking-widest mt-1">NTU</span>
+                                    <span class="text-[9px] text-gray-400 uppercase tracking-widest mt-1">Nivel de
+                                        Turbidez (NTU)</span>
                                 </div>
                             </div>
                         </div>
@@ -375,25 +398,211 @@
 
                     <!-- Charts Grid -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-black/40 border border-gray-800 rounded-xl p-4 shadow-inner">
-                            <h4 class="text-gray-400 text-xs uppercase mb-4 font-bold tracking-wider ml-2">Historial pH
-                            </h4>
-                            <div class="h-48">
+                        <div class="glass-panel rounded-2xl p-6 relative opacity-50 grayscale hover:grayscale-0">
+                            <div
+                                class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 border-b border-gray-700/50 pb-3 gap-2">
+                                <h4 class="text-white text-[11px] uppercase font-bold tracking-[0.2em]">HISTORIAL PH (24
+                                    Horas)</h4>
+                                <div class="flex gap-3 text-[9px] text-gray-400 uppercase tracking-wider font-bold">
+                                    <span class="flex items-center gap-1.5">
+                                        <div
+                                            class="w-2.5 h-2.5 rounded bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.6)]">
+                                        </div> Acidic
+                                    </span>
+                                    <span class="flex items-center gap-1.5">
+                                        <div
+                                            class="w-2.5 h-2.5 rounded bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.6)]">
+                                        </div> Neutral
+                                    </span>
+                                    <span class="flex items-center gap-1.5">
+                                        <div
+                                            class="w-2.5 h-2.5 rounded bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.6)]">
+                                        </div> Alkaline
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="h-56 relative">
                                 <canvas id="phChart"></canvas>
+                                <div
+                                    class="absolute inset-0 flex items-center justify-center bg-[#0b1120]/60 z-10 backdrop-blur-sm rounded-xl">
+                                    <span
+                                        class="text-gray-300 text-[10px] font-bold uppercase tracking-widest border border-gray-500/50 px-5 py-2 rounded-full glass-pill">Sensor
+                                        Apagado</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="bg-black/40 border border-gray-800 rounded-xl p-4 shadow-inner">
-                            <h4 class="text-gray-400 text-xs uppercase mb-4 font-bold tracking-wider ml-2">Historial TDS
-                            </h4>
-                            <div class="h-48">
+
+                        <div class="glass-panel rounded-2xl p-6 relative gauge-glow-cyan">
+                            <div
+                                class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 border-b border-gray-700/50 pb-3 gap-2">
+                                <h4
+                                    class="text-white text-[11px] uppercase font-bold tracking-[0.2em] flex items-center gap-2">
+                                    <div
+                                        class="w-1.5 h-1.5 bg-neon-blue rounded-full animate-pulse shadow-[0_0_8px_rgba(0,243,255,1)]">
+                                    </div>
+                                    HISTORIAL TDS (24 Horas)
+                                </h4>
+                                <div class="flex gap-3 text-[9px] text-gray-400 uppercase tracking-wider font-bold">
+                                    <span class="flex items-center gap-1.5">
+                                        <div class="w-2.5 h-2.5 rounded bg-[#0b4a2e] border border-green-500/50"></div>
+                                        Rango Óptimo
+                                    </span>
+                                    <span class="flex items-center gap-1.5">
+                                        <div class="w-2.5 h-2.5 rounded bg-[#4a1b1b] border border-red-500/50"></div>
+                                        Riesgo
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="h-56">
                                 <canvas id="tdsChart"></canvas>
                             </div>
                         </div>
-                        <div class="bg-black/40 border border-gray-800 rounded-xl p-4 shadow-inner">
-                            <h4 class="text-gray-400 text-xs uppercase mb-4 font-bold tracking-wider ml-2">Historial
-                                Turbidez</h4>
-                            <div class="h-48">
+
+                        <div
+                            class="glass-panel rounded-2xl p-6 relative opacity-50 grayscale hover:grayscale-0 md:col-span-2 lg:col-span-1">
+                            <div
+                                class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 border-b border-gray-700/50 pb-3 gap-2">
+                                <h4 class="text-white text-[11px] uppercase font-bold tracking-[0.2em]">HISTORIAL
+                                    TURBIDEZ</h4>
+                                <div class="flex gap-3 text-[9px] text-gray-400 uppercase tracking-wider font-bold">
+                                    <span class="flex items-center gap-1.5">
+                                        <div
+                                            class="w-2.5 h-2.5 rounded bg-green-500/50 border border-green-500/50 shadow-[0_0_5px_rgba(34,197,94,0.3)]">
+                                        </div> Good Range
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="h-56 relative">
                                 <canvas id="turbChart"></canvas>
+                                <div
+                                    class="absolute inset-0 flex items-center justify-center bg-[#0b1120]/60 z-10 backdrop-blur-sm rounded-xl">
+                                    <span
+                                        class="text-gray-300 text-[10px] font-bold uppercase tracking-widest border border-gray-500/50 px-5 py-2 rounded-full glass-pill">Sensor
+                                        Apagado</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- REPORTS VIEW -->
+            <div id="reports-view" class="hidden space-y-8 animate-fadeIn">
+                <div class="flex items-center justify-between border-b border-gray-800 pb-4">
+                    <h1
+                        class="text-3xl font-bold text-white font-orbitron uppercase tracking-widest flex items-center gap-3">
+                        <i data-lucide="file-bar-chart-2" class="text-cyan-400"></i> Reporte Diario
+                    </h1>
+                    <span id="report-date"
+                        class="bg-cyan-900/30 text-cyan-400 border border-cyan-500/30 px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase">
+                        --/--/----
+                    </span>
+                </div>
+
+                <!-- Diagnóstico Inteligente -->
+                <div id="report-alert-card"
+                    class="glass-panel rounded-2xl p-6 border transition-all duration-500 relative overflow-hidden border-gray-700/50">
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent to-black/30 pointer-events-none">
+                    </div>
+                    <div class="flex items-start gap-4 relative z-10">
+                        <div id="report-icon-wrapper"
+                            class="p-4 rounded-full flex-shrink-0 relative bg-gray-800 text-gray-500">
+                            <!-- Glow -->
+                            <div class="absolute inset-0 rounded-full blur-md opacity-20 bg-current"></div>
+                            <span class="relative z-10 text-white" id="report-icon-container">
+                                <i data-lucide="info" width="32" height="32"></i>
+                            </span>
+                        </div>
+                        <div class="flex-1">
+                            <h2 id="report-alert-title"
+                                class="text-xl font-bold mb-1 uppercase tracking-wide text-gray-400">Sin Datos</h2>
+                            <p id="report-alert-desc" class="text-gray-400 text-sm leading-relaxed mb-4">Esperando
+                                mediciones del sensor para emitir un diagnóstico.</p>
+
+                            <!-- Causas List -->
+                            <div id="report-causes-container" class="hidden mt-4">
+                                <h3
+                                    class="text-xs uppercase font-bold tracking-widest mb-3 opacity-80 border-b border-current/20 pb-1 inline-block text-current">
+                                    Posibles Causas:</h3>
+                                <ul id="report-causes-list"
+                                    class="space-y-2 text-sm text-gray-300 list-disc ml-5 marker:text-current">
+                                    <!-- Dynamic -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tarjetas Promedio -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div
+                        class="glass-panel gauge-glow-cyan border-cyan-500/30 rounded-2xl p-6 relative overflow-hidden shadow-inner group">
+                        <div
+                            class="absolute -right-4 -top-4 opacity-5 text-cyan-400 group-hover:scale-110 transition-transform duration-500">
+                            <i data-lucide="droplet" width="120" height="120"></i>
+                        </div>
+                        <h3 class="text-gray-400 font-bold text-xs tracking-widest uppercase mb-1">Promedio TDS</h3>
+                        <div class="flex items-baseline gap-2 mb-2">
+                            <span id="report-avg-tds"
+                                class="text-4xl font-black text-white font-orbitron drop-shadow-[0_0_10px_rgba(0,243,255,0.5)]">--</span>
+                            <span class="text-cyan-400 text-sm font-bold">ppm</span>
+                        </div>
+                        <div class="text-[10px] text-gray-500 uppercase tracking-wider flex items-center gap-1"><i
+                                data-lucide="clock" width="10"></i> Muestra Reciente</div>
+                    </div>
+
+                    <div
+                        class="glass-panel border-gray-800/50 rounded-2xl p-6 relative overflow-hidden shadow-inner opacity-50 grayscale pointer-events-none">
+                        <div class="absolute -right-4 -top-4 opacity-10 text-gray-400"><i data-lucide="flask-conical"
+                                width="120" height="120"></i></div>
+                        <h3 class="text-gray-500 font-bold text-xs tracking-widest uppercase mb-1">Promedio pH</h3>
+                        <div class="flex items-baseline gap-2 mb-2"><span
+                                class="text-4xl font-black text-gray-600 font-orbitron">--</span></div>
+                        <div
+                            class="text-[10px] text-gray-600 uppercase tracking-wider border border-gray-800 inline-block px-2 rounded">
+                            Deshabilitado</div>
+                    </div>
+
+                    <div
+                        class="glass-panel border-gray-800/50 rounded-2xl p-6 relative overflow-hidden shadow-inner opacity-50 grayscale pointer-events-none">
+                        <div class="absolute -right-4 -top-4 opacity-10 text-gray-400"><i data-lucide="waves"
+                                width="120" height="120"></i></div>
+                        <h3 class="text-gray-500 font-bold text-xs tracking-widest uppercase mb-1">Promedio Turbidez
+                        </h3>
+                        <div class="flex items-baseline gap-2 mb-2"><span
+                                class="text-4xl font-black text-gray-600 font-orbitron">--</span></div>
+                        <div
+                            class="text-[10px] text-gray-600 uppercase tracking-wider border border-gray-800 inline-block px-2 rounded">
+                            Deshabilitado</div>
+                    </div>
+                </div>
+
+                <!-- Detalles de Mediciones -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                    <!-- Historial Reciente (Hoy) -->
+                    <div class="glass-panel rounded-2xl p-6 shadow-inner relative overflow-hidden">
+                        <h3
+                            class="text-white font-bold text-sm tracking-widest uppercase mb-4 flex items-center gap-2 relative z-10">
+                            <i data-lucide="activity" class="text-neon-blue"></i> Historial Reciente (Hoy)
+                        </h3>
+                        <div id="report-events-list"
+                            class="space-y-3 max-h-80 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-800 relative z-10">
+                            <div class="text-center text-gray-600 text-sm py-4">Esperando historial...</div>
+                        </div>
+                    </div>
+
+                    <!-- Picos de Ayer -->
+                    <div class="glass-panel rounded-2xl p-6 shadow-inner relative overflow-hidden">
+                        <h3
+                            class="text-white font-bold text-sm tracking-widest uppercase mb-4 flex items-center gap-2 relative z-10">
+                            <i data-lucide="calendar" class="text-yellow-400"></i> Picos Altos de Ayer
+                        </h3>
+                        <div id="report-yesterday-list"
+                            class="space-y-3 max-h-80 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-800 relative z-10">
+                            <div
+                                class="text-center text-gray-600 text-sm py-4 pointer-events-none flex flex-col items-center">
+                                <i data-lucide="loader-2" class="animate-spin text-gray-600 mb-2" width="24"></i>
+                                Esperando datos...
                             </div>
                         </div>
                     </div>
@@ -411,7 +620,7 @@
                         class="hidden px-6 py-2 rounded-full font-bold uppercase tracking-wider bg-red-600 text-white shadow-neon-red">Admin</button>
                 </div>
 
-                <div id="settings-profile" class="bg-glass p-6 rounded-xl border border-cyan-500/20">
+                <div id="settings-profile" class="glass-panel p-6 rounded-2xl">
                     <h3 class="text-xl font-bold text-neon-blue mb-6 uppercase">Tu Perfil</h3>
                     <div class="space-y-4">
                         <div>
@@ -447,42 +656,42 @@
                             <p class="text-gray-500 text-xs mt-2">Ingrese la dirección MAC de su equipo ESP32.</p>
                         </div>
 
-                        <!-- IoT Simulator Section -->
-                        <div id="simulation-section" class="pt-6 border-t border-gray-800 mt-6">
-                            <h4 class="text-lg font-bold text-purple-400 mb-4 uppercase flex items-center gap-2">
-                                <i data-lucide="activity" class="text-purple-400"></i> Simulador IoT
-                            </h4>
-                            <div class="bg-black/50 p-4 rounded-lg border border-purple-500/30">
-                                <p class="text-gray-400 text-xs mb-4">Simule el envío de datos desde su dispositivo
-                                    vinculado.</p>
-                                <div class="grid grid-cols-3 gap-3 mb-4">
-                                    <div>
-                                        <label class="block text-gray-500 text-[10px] uppercase mb-1">pH</label>
-                                        <input id="sim-ph" type="number" step="0.1" value="7.0"
-                                            class="w-full bg-black/30 border border-purple-900 rounded px-2 py-1 text-white text-center">
-                                    </div>
-                                    <div>
-                                        <label class="block text-gray-500 text-[10px] uppercase mb-1">TDS</label>
-                                        <input id="sim-tds" type="number" step="1" value="300"
-                                            class="w-full bg-black/30 border border-purple-900 rounded px-2 py-1 text-white text-center">
-                                    </div>
-                                    <div>
-                                        <label class="block text-gray-500 text-[10px] uppercase mb-1">Turb</label>
-                                        <input id="sim-turb" type="number" step="1" value="2.5"
-                                            class="w-full bg-black/30 border border-purple-900 rounded px-2 py-1 text-white text-center">
-                                    </div>
-                                </div>
-                                <button id="btn-sim-send"
-                                    class="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold uppercase text-xs tracking-wider transition-colors flex items-center justify-center gap-2">
-                                    <i data-lucide="send" width="14"></i> Enviar Dato Simulado
-                                </button>
-                            </div>
-                        </div>
+                        <!-- Simulator removed -->
 
                     </div>
                 </div>
 
                 <div id="settings-admin" class="hidden space-y-8 animate-fadeIn">
+
+                    <!-- Registrar Dispositivo (PRE-ASIGNACION) -->
+                    <div class="bg-black/80 p-6 rounded-xl border border-red-500/30 relative overflow-hidden">
+                        <h3 class="text-xl font-bold text-red-500 mb-6 uppercase flex items-center">
+                            <i data-lucide="cpu" class="mr-2"></i>
+                            Añadir Nuevo Dispositivo ESP32 (TDS)
+                        </h3>
+                        <p class="text-gray-400 text-xs mb-4">Registre la placa con su MAC en el sistema para que quede
+                            disponible en el inventario. Una vez registrada, el cliente podrá vincularla directamente en
+                            su propio dashboard.</p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="block text-red-300 text-xs uppercase mb-2">Dirección MAC</label>
+                                <input id="admin-new-mac" type="text" placeholder="Ej: A0:B1:C2:D3:E4:F5"
+                                    class="w-full bg-red-950/20 border border-red-900/50 text-red-100 rounded px-3 py-2 font-mono uppercase focus:border-red-500 focus:outline-none placeholder-red-900/40">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-red-300 text-xs uppercase mb-2">Nombre Placa (Opcional)</label>
+                                <input id="admin-new-name" type="text" placeholder="Ej: ESP32-TDS-01"
+                                    class="w-full bg-red-950/20 border border-red-900/50 text-red-100 rounded px-3 py-2 focus:border-red-500 focus:outline-none placeholder-red-900/40">
+                            </div>
+                            <div class="flex items-end">
+                                <button id="btn-admin-add-device"
+                                    class="bg-red-600 hover:bg-red-500 text-white w-full py-2 rounded shadow-neon-red transition uppercase font-bold text-xs tracking-widest h-[42px] flex justify-center items-center gap-2">
+                                    <i data-lucide="plus-circle" width="16"></i> Registrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     <!-- Global Thresholds -->
                     <div class="bg-black/80 p-6 rounded-xl border border-red-500/30 relative overflow-hidden">
                         <div
@@ -530,7 +739,8 @@
                         <div class="overflow-x-auto">
                             <table class="w-full text-left text-sm text-gray-400">
                                 <thead>
-                                    <tr class="text-left text-gray-500 text-xs uppercase tracking-wider border-b border-gray-800">
+                                    <tr
+                                        class="text-left text-gray-500 text-xs uppercase tracking-wider border-b border-gray-800">
                                         <th class="p-3">Cliente</th>
                                         <th class="p-3">Contacto</th>
                                         <th class="p-3 text-center">Acciones</th>
@@ -554,7 +764,8 @@
                         <div class="overflow-x-auto">
                             <table class="w-full text-left text-sm text-gray-400">
                                 <thead>
-                                    <tr class="text-left text-gray-500 text-xs uppercase tracking-wider border-b border-gray-800">
+                                    <tr
+                                        class="text-left text-gray-500 text-xs uppercase tracking-wider border-b border-gray-800">
                                         <th class="p-3">Dispositivo (MAC)</th>
                                         <th class="p-3">Usuario Vinculado</th>
                                         <th class="p-3">Última Lectura</th>
@@ -585,11 +796,12 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- App Modules (Added version to force refresh) -->
-    <script src="assets/js/supabaseClient.js?v=2.0"></script>
-    <script src="assets/js/charts.js?v=2.0"></script>
-    <script src="assets/js/auth.js?v=2.0"></script> <!-- Module Auth -->
-    <script src="assets/js/admin.js?v=2.0"></script> <!-- Module Admin -->
-    <script src="assets/js/main.js?v=2.0"></script>
+    <script src="assets/js/supabaseClient.js?v=2.2"></script>
+    <script src="assets/js/charts.js?v=2.2"></script>
+    <script src="assets/js/reports.js?v=2.2"></script> <!-- Module Reports -->
+    <script src="assets/js/auth.js?v=2.2"></script> <!-- Module Auth -->
+    <script src="assets/js/admin.js?v=2.2"></script> <!-- Module Admin -->
+    <script src="assets/js/main.js?v=2.2"></script>
 
     <script>
         // Check for Service Worker support

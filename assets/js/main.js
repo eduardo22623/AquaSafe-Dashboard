@@ -6,7 +6,8 @@ const views = {
     landing: document.getElementById('landing-view'),
     auth: document.getElementById('auth-view'),
     dashboard: document.getElementById('dashboard-view'),
-    settings: document.getElementById('settings-view')
+    settings: document.getElementById('settings-view'),
+    reports: document.getElementById('reports-view')
 };
 
 const sidebar = document.getElementById('sidebar');
@@ -29,7 +30,7 @@ function showView(viewName) {
     }
 
     // Manage Sidebar visibility
-    if (viewName === 'dashboard' || viewName === 'settings') {
+    if (viewName === 'dashboard' || viewName === 'settings' || viewName === 'reports') {
         sidebar.classList.remove('hidden');
     } else {
         sidebar.classList.add('hidden');
@@ -244,7 +245,7 @@ async function fetchData() {
             .from('mediciones')
             .select('*')
             .order('created_at', { ascending: false })
-            .limit(20);
+            .limit(60);
 
         // Filter by Device if Operator and has device
         if (currentUser && currentUser.role !== 'admin' && currentUser.deviceId) {
@@ -277,6 +278,7 @@ async function fetchData() {
 function formatReading(d) {
     return {
         timestamp: new Date(d.created_at).toLocaleTimeString(),
+        rawDate: new Date(d.created_at),
         ph: Number(d.ph || 0),
         turbidity: Number(d.turbidez || 0),
         tds: Number(d.tds || 0),
@@ -287,7 +289,7 @@ function formatReading(d) {
 function addReading(raw) {
     const reading = formatReading(raw);
     currentReadings.push(reading);
-    if (currentReadings.length > 20) currentReadings.shift();
+    if (currentReadings.length > 60) currentReadings.shift();
     updateDashboard(); // This updates the UI
 }
 
@@ -301,21 +303,133 @@ function updateDbStatus(status) {
 
     if (status === 'connected') {
         el.className += ' border-green-500/50 bg-green-900/20 text-green-400';
-        el.innerHTML = '<i data-lucide="wifi" width="14"></i> CONECTADO';
+        el.innerHTML = '<i data-lucide="cloud" width="14"></i> DB CONECTADA';
     } else if (status === 'error') {
         el.className += ' border-red-500/50 bg-red-900/20 text-red-400';
-        el.innerHTML = '<i data-lucide="wifi-off" width="14"></i> DESCONECTADO';
+        el.innerHTML = '<i data-lucide="cloud-off" width="14"></i> DB ERROR';
     } else {
         el.className += ' border-yellow-500/50 bg-yellow-900/20 text-yellow-400 animate-pulse';
-        el.innerHTML = '<i data-lucide="loader-2" width="14" class="animate-spin"></i> CONECTANDO';
+        el.innerHTML = '<i data-lucide="loader-2" width="14" class="animate-spin"></i> DB CONECTANDO';
     }
 
     // Refresh icons since we replaced innerHTML
     if (window.lucide) lucide.createIcons();
 }
 
+let deviceOnlineStatus = null;
+let deviceCheckInterval = null;
+
+function startDeviceConnectionCheck() {
+    if (deviceCheckInterval) clearInterval(deviceCheckInterval);
+    deviceCheckInterval = setInterval(checkDeviceConnection, 10000); // Check every 10 seconds
+}
+
+function checkDeviceConnection() {
+    // Only verify if operator user with a device, or admin viewing data (optional)
+    if (!currentUser) return;
+    if (currentUser.role !== 'admin' && !currentUser.deviceId) return;
+
+    const el = document.getElementById('device-status-indicator');
+    if (!el) return;
+    
+    // Always show it if we have a linked device
+    el.classList.remove('hidden');
+
+    if (currentReadings.length === 0) {
+        updateDeviceStatus(false);
+        return;
+    }
+
+    const latest = currentReadings[currentReadings.length - 1];
+    const now = new Date();
+    // 15 seconds (15000 ms) since last reading
+    const diffMs = now - latest.rawDate;
+
+    if (diffMs > 15000) {
+        updateDeviceStatus(false);
+    } else {
+        updateDeviceStatus(true);
+    }
+}
+
+function updateDeviceStatus(isOnline) {
+    if (deviceOnlineStatus === isOnline) return;
+
+    deviceOnlineStatus = isOnline;
+    const el = document.getElementById('device-status-indicator');
+    if (!el) return;
+
+    el.className = 'px-3 py-1 rounded border text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all';
+
+    if (isOnline) {
+        el.className += ' border-green-500/50 bg-green-900/20 text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.3)]';
+        el.innerHTML = '<i data-lucide="wifi" width="14"></i> DISPOSITIVO ONLINE';
+        showDeviceToast('Conexión con el dispositivo restablecida (Online)', 'success');
+    } else {
+        el.className += ' border-red-500/50 bg-red-900/20 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.3)]';
+        el.innerHTML = '<i data-lucide="wifi-off" width="14"></i> DISPOSITIVO OFFLINE';
+        showDeviceToast('Sin datos del dispositivo o error de conexión (Offline)', 'error');
+    }
+
+    if (window.lucide) lucide.createIcons();
+}
+
+function showDeviceToast(message, type) {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed top-24 right-8 z-50 flex flex-col gap-3';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `px-4 py-3 rounded-lg shadow-lg font-bold text-sm flex items-center gap-3 transform transition-all duration-300 translate-x-10 opacity-0 min-w-[300px] border bg-gray-900`;
+
+    if (type === 'success') {
+        toast.innerHTML = `<i data-lucide="check-circle" class="text-green-400" width="20"></i> <span class="text-white">${message}</span>`;
+        toast.classList.add('border-green-500/30', 'shadow-[0_0_15px_rgba(34,197,94,0.2)]');
+    } else {
+        toast.innerHTML = `<i data-lucide="alert-triangle" class="text-red-400" width="20"></i> <span class="text-white">${message}</span>`;
+        toast.classList.add('border-red-500/30', 'shadow-[0_0_15px_rgba(239,68,68,0.2)]');
+    }
+
+    container.appendChild(toast);
+    if (window.lucide) lucide.createIcons();
+
+    setTimeout(() => {
+        toast.classList.remove('translate-x-10', 'opacity-0');
+    }, 10);
+
+    setTimeout(() => {
+        toast.classList.add('translate-x-10', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// Clock Manager
+function startClock() {
+    const clockEl = document.getElementById('clock-display');
+    if (!clockEl) return;
+    
+    function tick() {
+        const now = new Date();
+        const opts = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
+        clockEl.innerText = now.toLocaleString('es-MX', opts).replace(/, /g, ', ');
+    }
+    
+    tick(); // Init immediately
+    setInterval(tick, 60000); // Check every minute
+}
+
 function updateDashboard() {
-    if (currentReadings.length === 0) return;
+    if (currentReadings.length === 0) {
+        const statusEl = document.getElementById('water-status-indicator');
+        if (statusEl) statusEl.innerHTML = '--';
+        if (typeof updateCharts === 'function') updateCharts([]);
+        if (window.Reports) window.Reports.update([]);
+        return;
+    }
 
     const latest = currentReadings[currentReadings.length - 1];
 
@@ -332,6 +446,9 @@ function updateDashboard() {
 
     // Update Charts (and Gauges text)
     updateCharts(currentReadings);
+
+    // Update Reports
+    if (window.Reports) window.Reports.update(currentReadings);
 }
 
 let inactivityTimeout;
@@ -357,8 +474,15 @@ function resetInactivityTimer() {
 document.addEventListener('DOMContentLoaded', () => {
 
     // Init External Modules
-    Auth.init(); // Initialize Auth Listeners
+    Auth.init();  // Initialize Auth Listeners
+    Admin.init(); // Initialize Admin Listeners (registrar dispositivo, etc.)
     initCharts();
+    
+    // Start Device Status Checker
+    startDeviceConnectionCheck();
+
+    // Start header clock
+    startClock();
 
     // Check Auth Session
     checkSession();
@@ -374,6 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Navigation
     document.getElementById('btn-nav-dashboard').addEventListener('click', () => showView('dashboard'));
+    document.getElementById('btn-nav-reports').addEventListener('click', () => showView('reports'));
     document.getElementById('btn-nav-settings').addEventListener('click', () => showView('settings'));
 
     // Sidebar Toggle
@@ -396,8 +521,13 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btn-tab-profile').classList.remove('bg-cyan-600', 'text-white', 'shadow-neon-blue');
         document.getElementById('btn-tab-profile').classList.add('bg-gray-800', 'text-gray-500');
 
-        // Load Users and Monitor
-        Admin.fetchUsers();
+        // Arrancar auto-refresh al entrar al tab Admin
+        Admin.startAutoRefresh();
+    });
+
+    document.getElementById('btn-tab-profile').addEventListener('click', () => {
+        // Detener auto-refresh al salir del tab Admin
+        Admin.stopAutoRefresh();
     });
 
     // Refresh Monitor Button
@@ -414,128 +544,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Device Management ---
     const btnSaveDevice = document.getElementById('btn-save-device');
-    btnSaveDevice.addEventListener('click', async () => {
-        const mac = document.getElementById('device-mac').value.trim();
-        if (!mac) return alert('⚠️ Ingrese una dirección MAC válida (Ej: A0:B1:C2:D3:E4:F5).');
+    if (btnSaveDevice) {
+        btnSaveDevice.addEventListener('click', async () => {
+            const mac = document.getElementById('device-mac').value.trim().toUpperCase();
+            if (!mac) return alert('⚠️ Ingrese una dirección MAC válida (Ej: A0:B1:C2:D3:E4:F5).');
 
-        // Visual Feedback
-        const originalText = btnSaveDevice.innerText;
-        btnSaveDevice.innerText = 'Verificando...';
-        btnSaveDevice.disabled = true;
+            // Visual Feedback
+            const originalText = btnSaveDevice.innerText;
+            btnSaveDevice.innerText = 'Buscando MAC...';
+            btnSaveDevice.disabled = true;
 
-        try {
-            // 1. Check if device exists
-            const { data: existingDevice, error: fetchError } = await supabaseClient
-                .from('devices')
-                .select('*')
-                .eq('mac_address', mac)
-                .maybeSingle(); // Use maybeSingle to avoid error on null
-
-            if (existingDevice) {
-                // Device exists. Check owner.
-                if (existingDevice.user_id && existingDevice.user_id !== currentUser.id) {
-                    throw new Error("⛔ Este dispositivo (MAC) ya pertenece a otro usuario.");
-                }
-
-                // It's mine, just update name/timestamp if needed
-                const { error: updateError } = await supabaseClient
-                    .from('devices')
-                    .update({
-                        name: `Dispositivo de ${currentUser.name}`,
-                        // user_id is already correct
-                    })
-                    .eq('mac_address', mac);
-
-                if (updateError) throw updateError;
-                alert('✅ Dispositivo confirmado. Ya estaba vinculado a tu cuenta.');
-
-            } else {
-                // Device does not exist. Create it.
-                const { error: insertError } = await supabaseClient
-                    .from('devices')
-                    .insert({
-                        mac_address: mac,
-                        user_id: currentUser.id,
-                        name: `Dispositivo de ${currentUser.name}`
-                    });
-
-                if (insertError) {
-                    // Check specifically for Duplicate Key (in case race condition or RLS hidden)
-                    if (insertError.code === '23505') {
-                        throw new Error("⛔ Este dispositivo ya está registrado por otro usuario.");
-                    }
-                    throw insertError;
-                }
-                alert('✅ Nuevo dispositivo registrado exitosamente.');
-            }
-
-            // Critical: Update Local State immediately
-            currentUser.deviceId = mac;
-
-            // Lock UI immediately
-            updateUserUI(); // Fixed function name
-
-            // Force refresh of Realtime Subscription AND fetch data immediately
-            if (window.subscription) supabaseClient.removeChannel(window.subscription);
-            initRealtime();
-            fetchData(); // <-- Explicit fetch to update charts/gauges immediately
-
-        } catch (e) {
-            console.error("Device Link Error:", e);
-            // Show detailed error if available
-            const msg = e.message || JSON.stringify(e) || 'Error desconocido';
-            alert('❌ No se pudo vincular: ' + msg);
-        } finally {
-            btnSaveDevice.innerText = originalText;
-            btnSaveDevice.disabled = false;
-        }
-    });
-
-    // --- Simulator ---
-    const btnSimSend = document.getElementById('btn-sim-send');
-    btnSimSend.addEventListener('click', async () => {
-        // Validation with specific message
-        if (!currentUser || !currentUser.id) return alert('⚠️ Error: Sesión no válida. Recargue la página.');
-        if (!currentUser.deviceId) return alert('⚠️ Error: No tiene dispositivo vinculado. Use el formulario de arriba primero.');
-
-        // Visual Feedback
-        const originalIcon = btnSimSend.innerHTML;
-        btnSimSend.innerText = 'Enviando...';
-        btnSimSend.disabled = true;
-
-        const ph = parseFloat(document.getElementById('sim-ph').value);
-        const tds = parseInt(document.getElementById('sim-tds').value);
-        const turb = parseFloat(document.getElementById('sim-turb').value);
-
-        // Potability Logic
-        const isPotable = (ph >= 6.5 && ph <= 8.5) && (tds < 500) && (turb < 10);
-
-        try {
-            console.log(`Sending Data -> Device: ${currentUser.deviceId}, User: ${currentUser.id}`);
-
-            const { error } = await supabaseClient
-                .from('mediciones')
-                .insert({
-                    device_id: currentUser.deviceId,
-                    ph: ph,
-                    tds: tds,
-                    turbidez: turb,
-                    es_potable: isPotable
+            try {
+                // Usar la función SQL segregada para reclamar dispositivo de forma segura (evita RLS invisible)
+                const { error: claimError } = await supabaseClient.rpc('claim_device', {
+                    p_mac_address: mac
                 });
 
-            if (error) throw error;
+                if (claimError) {
+                    console.error("RPC Error:", claimError);
+                    throw new Error(claimError.message || claimError.details || 'Error desconocido al vincular.');
+                }
 
-            alert('✅ Dato simulado enviado con éxito!');
+                alert('✅ Dispositivo pre-registrado vinculado exitosamente a tu cuenta.');
 
-            // Fallback: Fetch data manually to ensure UI updates even if Realtime is filtered/slow
-            fetchData();
+                // Critical: Update Local State immediately
+                currentUser.deviceId = mac;
 
-        } catch (e) {
-            console.error('Sim Error:', e);
-            alert('❌ Error enviando dato: ' + (e.message || e.details));
-        } finally {
-            btnSimSend.innerHTML = originalIcon;
-            btnSimSend.disabled = false;
-        }
-    });
+                // Lock UI immediately
+                updateUserUI(); 
+
+                // Force refresh of Realtime Subscription AND fetch data immediately
+                if (window.subscription) supabaseClient.removeChannel(window.subscription);
+                initRealtime();
+                fetchData();
+
+            } catch (e) {
+                console.error("Device Link Error:", e);
+                alert('❌ No se pudo vincular: \n' + e.message);
+            } finally {
+                btnSaveDevice.innerText = originalText;
+                btnSaveDevice.disabled = false;
+            }
+        });
+    }
+
+    // Simulator Code Removed
 });

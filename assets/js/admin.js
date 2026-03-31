@@ -4,15 +4,36 @@
 const Admin = {
     state: {
         users: [],
-        thresholds: { phMin: 6.5, phMax: 8.5, tdsMax: 500 }
+        thresholds: { phMin: 6.5, phMax: 8.5, tdsMax: 500 },
+        autoRefreshInterval: null
     },
 
     init() {
-        // Init listeners if elements exist
+        // Botones de refresh manual
         const refreshBtns = document.querySelectorAll('.btn-refresh-monitor');
         refreshBtns.forEach(btn => {
             btn.addEventListener('click', () => this.fetchDeviceMonitor());
         });
+
+        // Botón registrar nuevo dispositivo
+        const btnAddDevice = document.getElementById('btn-admin-add-device');
+        if (btnAddDevice) {
+            btnAddDevice.addEventListener('click', () => this.registerNewDevice());
+        }
+    },
+
+    // Arrancar auto-refresh cada 10s mientras el panel admin esté visible
+    startAutoRefresh() {
+        this.stopAutoRefresh();
+        this.fetchDeviceMonitor();
+        this.state.autoRefreshInterval = setInterval(() => this.fetchDeviceMonitor(), 10000);
+    },
+
+    stopAutoRefresh() {
+        if (this.state.autoRefreshInterval) {
+            clearInterval(this.state.autoRefreshInterval);
+            this.state.autoRefreshInterval = null;
+        }
     },
 
     // --- Main Feature: Device Monitor ---
@@ -82,33 +103,51 @@ const Admin = {
 
         const devices = data && data.length > 0 ? data.filter(r => r.mac_address) : [];
         if (devices.length === 0) {
-            devicesBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No hay dispositivos vinculados.</td></tr>';
+            devicesBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No hay dispositivos registrados aún.</td></tr>';
             return;
-        } 
+        }
 
         devices.forEach(row => {
             const tr = document.createElement('tr');
             tr.className = 'border-b border-gray-800 hover:bg-white/5 transition-colors';
 
+            // Estado basado en last_reading_at e is_potable (alias de es_potable en la vista)
             let statusHtml = '<span class="px-2 py-1 rounded text-xs bg-gray-800 text-gray-500">Sin Datos</span>';
             if (row.last_reading_at) {
-                if (row.is_potable !== false) {
-                     statusHtml = '<span class="px-2 py-1 rounded text-xs bg-green-900/50 text-green-400 border border-green-500/30">ACTIVO</span>';
+                if (row.is_potable === true || row.is_potable === null) {
+                    statusHtml = '<span class="px-2 py-1 rounded text-xs bg-green-900/50 text-green-400 border border-green-500/30">✓ ACTIVO</span>';
                 } else {
-                     statusHtml = '<span class="px-2 py-1 rounded text-xs bg-red-900/50 text-red-500 border border-red-500/30 animate-pulse">ALERTA</span>';
+                    statusHtml = '<span class="px-2 py-1 rounded text-xs bg-red-900/50 text-red-500 border border-red-500/30 animate-pulse">⚠ ALERTA</span>';
                 }
             }
 
-            const dateStr = row.last_reading_at ? new Date(row.last_reading_at).toLocaleString() : '--';
+            // Tiempo desde última lectura
+            let dateStr = '--';
+            if (row.last_reading_at) {
+                const d = new Date(row.last_reading_at);
+                const diffMs = Date.now() - d.getTime();
+                const diffMin = Math.floor(diffMs / 60000);
+                if (diffMin < 1) dateStr = 'Hace unos segundos';
+                else if (diffMin < 60) dateStr = `Hace ${diffMin} min`;
+                else dateStr = d.toLocaleString();
+            }
 
             tr.innerHTML = `
-                <td class="p-3 text-cyan-400 font-mono text-xs">${row.mac_address}</td>
-                <td class="p-3 text-gray-300 text-sm font-medium">${row.client_name || 'Sin Asignar'}</td>
-                <td class="p-3 text-gray-300">
+                <td class="p-3">
+                    <div class="text-cyan-400 font-mono text-xs">${row.mac_address}</div>
+                    <div class="text-gray-600 text-[10px] mt-0.5">${row.device_name || ''}</div>
+                </td>
+                <td class="p-3 text-sm">
+                    ${row.client_name
+                        ? `<span class="text-gray-300 font-medium">${row.client_name}</span>`
+                        : `<span class="text-yellow-500/70 text-xs italic">Sin asignar</span>`
+                    }
+                </td>
+                <td class="p-3">
                     <div class="flex flex-col text-xs space-y-1">
-                        <span class="flex justify-between w-24"><span>pH:</span> <b class="text-white">${row.last_ph ?? '--'}</b></span>
-                        <span class="flex justify-between w-24"><span>TDS:</span> <b class="text-white">${row.last_tds ?? '--'}</b></span>
-                        <span class="flex justify-between w-24"><span>Turb:</span> <b class="text-white">${row.last_turbidity ?? '--'}</b></span>
+                        <span class="flex justify-between w-28"><span class="text-gray-500">TDS:</span> <b class="text-cyan-300">${row.last_tds != null ? row.last_tds + ' ppm' : '--'}</b></span>
+                        <span class="flex justify-between w-28"><span class="text-gray-500">pH:</span> <b class="text-white">${row.last_ph ?? '--'}</b></span>
+                        <span class="flex justify-between w-28"><span class="text-gray-500">Turb:</span> <b class="text-white">${row.last_turbidity ?? '--'}</b></span>
                         <span class="text-[10px] text-gray-600 border-t border-gray-800 pt-1 mt-1">${dateStr}</span>
                     </div>
                 </td>
@@ -142,9 +181,8 @@ const Admin = {
             .subscribe();
     },
 
-    // Placeholder to avoid errors if main.js calls fetchUsers
+    // Placeholder: main.js puede llamar fetchUsers
     async fetchUsers() {
-        // Redirect to monitor fetch
         await this.fetchDeviceMonitor();
     },
 
@@ -181,6 +219,44 @@ const Admin = {
         } catch (e) {
             console.error("Error al eliminar usuario:", e);
             alert(`Error al eliminar usuario: ${e.message}`);
+        }
+    },
+
+    // --- Add New Device (Pre-Register) ---
+    async registerNewDevice() {
+        const macInput = document.getElementById('admin-new-mac');
+        const nameInput = document.getElementById('admin-new-name');
+        const btn = document.getElementById('btn-admin-add-device');
+        
+        const mac = macInput.value.trim().toUpperCase();
+        const name = nameInput.value.trim() || 'ESP32 TDS Sensor';
+
+        if (!mac) return alert('Por favor, ingrese una dirección MAC válida.');
+
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin"></i> Registrando...';
+        btn.disabled = true;
+
+        try {
+            // Llamamos a la función segura para que el admin inserte un dispositivo sin dueño
+            const { error } = await supabaseClient.rpc('admin_create_device', {
+                p_mac_address: mac,
+                p_name: name
+            });
+
+            if (error) throw error;
+
+            alert('¡Dispositivo registrado exitosamente en el inventario!');
+            macInput.value = '';
+            nameInput.value = '';
+            this.fetchDeviceMonitor(); // Refrescar tabla
+        } catch (e) {
+            console.error("Error al pre-registrar dispositivo:", e);
+            alert(`Error al registrar el dispositivo: ${e.message}\n(Posiblemente la MAC ya existe)`);
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            if (window.lucide) window.lucide.createIcons();
         }
     }
 };

@@ -83,8 +83,8 @@ const historyOptions = {
     interaction: { intersect: false, mode: 'index' },
     plugins: { legend: { display: false } },
     scales: {
-        x: { grid: { color: '#333' }, ticks: { color: '#666', font: { size: 10 } } },
-        y: { grid: { color: '#333' }, ticks: { color: '#666', font: { size: 10 } } }
+        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+        y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
     }
 };
 
@@ -199,11 +199,28 @@ function initCharts() {
     const initHistory = (id, label, color, max) => {
         const canvas = document.getElementById(id);
         if (canvas) {
-            // Check if instance exists globally before creating? 
-            // Simplified for brevity, assume caller handles logic or this runs once.
-            return new Chart(canvas.getContext('2d'), {
+            const ctx = canvas.getContext('2d');
+            return new Chart(ctx, {
                 type: 'line',
-                data: { labels: [], datasets: [{ label: label, data: [], borderColor: color, tension: 0.4 }] },
+                data: { 
+                    labels: [], 
+                    datasets: [{ 
+                        label: label, 
+                        data: [], 
+                        borderColor: color, 
+                        backgroundColor: color + '20', // 12% opacity roughly
+                        borderWidth: 2,
+                        pointBackgroundColor: '#0b1120',
+                        pointBorderColor: color,
+                        pointHoverBackgroundColor: color,
+                        pointHoverBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 2,
+                        pointHoverRadius: 4,
+                        fill: true,
+                        tension: 0.4 
+                    }] 
+                },
                 options: { ...historyOptions, scales: { ...historyOptions.scales, y: { min: 0, max: max } } }
             });
         }
@@ -218,7 +235,52 @@ function initCharts() {
 }
 
 function updateCharts(readings) {
-    if (!readings || readings.length === 0) return;
+    const hasData = readings && readings.length > 0;
+
+    // Lógica para apagar/encender la UI de TDS si no hay dispositivo vinculado
+    const gaugeTdsCard = document.getElementById('gaugeTds')?.parentElement?.parentElement;
+    const historyTdsCard = document.getElementById('tdsChart')?.parentElement?.parentElement;
+
+    if (gaugeTdsCard) {
+        if (!hasData) {
+            gaugeTdsCard.classList.add('opacity-50', 'grayscale', 'pointer-events-none');
+            gaugeTdsCard.classList.remove('border-cyan-500/30', 'drop-shadow-[0_0_10px_rgba(0,243,255,0.1)]');
+            gaugeTdsCard.classList.add('border-gray-800');
+        } else {
+            gaugeTdsCard.classList.remove('opacity-50', 'grayscale', 'pointer-events-none');
+            gaugeTdsCard.classList.remove('border-gray-800');
+            gaugeTdsCard.classList.add('border-cyan-500/30', 'drop-shadow-[0_0_10px_rgba(0,243,255,0.1)]');
+        }
+    }
+
+    if (historyTdsCard) {
+        if (!hasData) {
+            historyTdsCard.classList.add('opacity-50', 'grayscale', 'pointer-events-none');
+            historyTdsCard.classList.remove('border-cyan-500/30');
+            historyTdsCard.classList.add('border-gray-800');
+        } else {
+            historyTdsCard.classList.remove('opacity-50', 'grayscale', 'pointer-events-none');
+            historyTdsCard.classList.remove('border-gray-800');
+            historyTdsCard.classList.add('border-cyan-500/30');
+        }
+    }
+
+    if (!hasData) {
+        // Lógica de limpieza visual estática (Desvinculado / Logout)
+        if (phGaugeInstance) { phGaugeInstance.data.datasets[0].needleValue = 0; phGaugeInstance.update(); }
+        if (tdsGaugeInstance) { tdsGaugeInstance.data.datasets[0].needleValue = 0; tdsGaugeInstance.update(); }
+        if (turbGaugeInstance) { turbGaugeInstance.data.datasets[0].needleValue = 0; turbGaugeInstance.update(); }
+        
+        ['val-ph', 'val-tds', 'val-turb'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) { el.innerText = '--'; el.style.color = ''; el.style.textShadow = ''; }
+        });
+
+        if (phChartInstance) { phChartInstance.data.labels = []; phChartInstance.data.datasets[0].data = []; phChartInstance.update(); }
+        if (tdsChartInstance) { tdsChartInstance.data.labels = []; tdsChartInstance.data.datasets[0].data = []; tdsChartInstance.update(); }
+        if (turbChartInstance) { turbChartInstance.data.labels = []; turbChartInstance.data.datasets[0].data = []; turbChartInstance.update(); }
+        return;
+    }
 
     // Get latest Value
     const latest = readings[readings.length - 1]; // Assuming sorted ascending by date (if not check main.js)

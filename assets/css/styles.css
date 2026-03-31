@@ -1,22 +1,82 @@
-// Initialize Supabase
-const supabaseUrl='https://jysmjqjqjqjqjqjqjqj.supabase.co'; // REPLACE WITH REAL URL FROM PREVIOUS CONFIG OR LEAVE UNTIL USER PROVIDES
-// Wait, I need the real URL and Key. I see them in the previous file reads?
-// I don't see .env content (Step 9 listed it but didn't read it).
-// I should read .env from _legacy or water_quality_iot.tsx (Step 30) imported from './lib/supabaseClient'.
-// Let's check if I can find the key in the code I read.
-// water_quality_iot.tsx imported `supabase` from `./lib/supabaseClient`. I didn't read `lib/supabaseClient.ts`.
-// I should try to read `_legacy/src/lib/supabaseClient.ts` (or .js/tsx) to get the credentials.
-// Or read `_legacy/.env`.
+/* Custom Dashboard Styles */
 
-// I will place placeholders or try to read it in the next step.
-// For now I will write a placeholder file or try to read `.env` with a separate tool call if I haven't closed this one.
-// I can't do tool calls inside write_to_file content generation.
+body {
+    background-color: #0b1120 !important;
+    /* Molecular / tech abstract pattern background overlay */
+    background-image: 
+        radial-gradient(circle at 15% 50%, rgba(6, 182, 212, 0.08), transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.08), transparent 25%),
+        url('../../media/fondo.png'); 
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-blend-mode: overlay;
+}
 
-// I will write this file with placeholders for now, and update it immediately after reading the config.
-// Better: I will read the config FIRST, then write this file.
-// So I will skip writing supabaseClient.js for this turn and read the legacy file.
+/* Base tailwind override just in case */
+.bg-black {
+    background-color: transparent !important;
+}
 
-// ACTUALLY, I am in the tool call generation block. I must commit or change plan.
-// I will write `styles.css` ONLY in this turn, then read the config, then write the JS files.
+/* Glassmorphism Classes */
+.glass-panel {
+    background: rgba(15, 23, 42, 0.75) !important;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(148, 163, 184, 0.1) !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6) !important;
+}
 
-// Just Styles for now.
+.glass-pill {
+    background: rgba(15, 23, 42, 0.8) !important;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Neon Glow Additions for the gauges */
+.gauge-glow-cyan {
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.1), inset 0 0 25px rgba(6, 182, 212, 0.05) !important;
+    border-color: rgba(6, 182, 212, 0.2) !important;
+}
+.gauge-glow-green {
+    box-shadow: 0 0 25px rgba(34, 197, 94, 0.1), inset 0 0 25px rgba(34, 197, 94, 0.05) !important;
+    border-color: rgba(34, 197, 94, 0.2) !important;
+}
+.gauge-glow-purple {
+    box-shadow: 0 0 25px rgba(168, 85, 247, 0.1), inset 0 0 25px rgba(168, 85, 247, 0.05) !important;
+    border-color: rgba(168, 85, 247, 0.2) !important;
+}
+
+/* Scrollbar tweaks for dark theme */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.5);
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(56, 189, 248, 0.3);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(56, 189, 248, 0.5);
+}
+
+/* Animaciones */
+.animate-fadeIn {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom Overrides */
+.bg-cyan-900\/20 {
+    background-color: rgb(22 78 99 / 70%) !important;
+}
+.bg-red-900\/20 {
+    background-color: rgb(127 29 29 / 80%) !important;
+}

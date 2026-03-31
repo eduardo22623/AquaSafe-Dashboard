@@ -40,7 +40,7 @@ const Auth = {
 
         // Forms
         document.getElementById('btn-login-submit').addEventListener('click', () => this.handleLogin());
-        document.getElementById('btn-register-submit').addEventListener('click', () => this.handleRegister());
+        // REMOVED: btn-register-submit listener (it's handled by onsubmit in index.html to support HTML5 validation)
 
         // Password Visibility Toggles
         document.querySelectorAll('.btn-toggle-pass').forEach(btn => {
