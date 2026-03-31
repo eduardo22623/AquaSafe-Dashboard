@@ -130,10 +130,12 @@ function updateUserUI() {
     const simSection = document.getElementById('simulation-section');
     const dbAdminContent = document.getElementById('dashboard-admin-content'); // New
     const dbUserContent = document.getElementById('dashboard-user-content');   // New
+    const btnNavReports = document.getElementById('btn-nav-reports');
 
     if (currentUser.role === 'admin') {
         if (deviceSection) deviceSection.classList.add('hidden');
         if (simSection) simSection.classList.add('hidden');
+        if (btnNavReports) btnNavReports.classList.add('hidden');
 
         // --- Dashboard Clean-up for Admin ---
         if (dbAdminContent) dbAdminContent.classList.remove('hidden');
@@ -142,6 +144,8 @@ function updateUserUI() {
     } else {
         if (deviceSection) deviceSection.classList.remove('hidden');
         if (simSection) simSection.classList.remove('hidden');
+        if (btnNavReports) btnNavReports.classList.remove('hidden', 'flex'); 
+        if (btnNavReports) btnNavReports.classList.add('flex'); // Ensure it's display flex
 
         // --- Dashboard Restore for User ---
         if (dbAdminContent) dbAdminContent.classList.add('hidden');
