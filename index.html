@@ -518,11 +518,11 @@
                         </button>
                     </div>
 
-                    <!-- User Management -->
-                    <div class="bg-black/80 p-6 rounded-xl border border-red-500/30">
+                    <!-- User Management (Lista de Usuarios) -->
+                    <div class="bg-black/80 p-6 rounded-xl border border-red-500/30 mb-8">
                         <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-xl font-bold text-red-500 uppercase">Gestión de Usuarios</h3>
-                            <button id="btn-refresh-users" class="text-red-400 hover:text-white transition">
+                            <h3 class="text-xl font-bold text-red-500 uppercase">Lista de Usuarios</h3>
+                            <button class="btn-refresh-monitor text-red-400 hover:text-white transition">
                                 <i data-lucide="refresh-cw" width="16"></i>
                             </button>
                         </div>
@@ -530,17 +530,39 @@
                         <div class="overflow-x-auto">
                             <table class="w-full text-left text-sm text-gray-400">
                                 <thead>
-                                    <tr
-                                        class="text-left text-gray-500 text-xs uppercase tracking-wider border-b border-gray-800">
+                                    <tr class="text-left text-gray-500 text-xs uppercase tracking-wider border-b border-gray-800">
                                         <th class="p-3">Cliente</th>
                                         <th class="p-3">Contacto</th>
-                                        <th class="p-3">ID Dispositivo</th>
-                                        <th class="p-3">Última Lectura</th>
-                                        <th class="p-3 text-center">Estado</th>
+                                        <th class="p-3 text-center">Acciones</th>
                                     </tr>
                                 </thead>
-                                <tbody id="admin-monitor-body" class="text-sm">
-                                    <!-- JS llenará esto -->
+                                <tbody id="admin-users-body" class="text-sm">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Device Management (Lista de Dispositivos) -->
+                    <div class="bg-black/80 p-6 rounded-xl border border-red-500/30">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-xl font-bold text-red-500 uppercase">Lista de Dispositivos</h3>
+                            <button class="btn-refresh-monitor text-red-400 hover:text-white transition">
+                                <i data-lucide="refresh-cw" width="16"></i>
+                            </button>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm text-gray-400">
+                                <thead>
+                                    <tr class="text-left text-gray-500 text-xs uppercase tracking-wider border-b border-gray-800">
+                                        <th class="p-3">Dispositivo (MAC)</th>
+                                        <th class="p-3">Usuario Vinculado</th>
+                                        <th class="p-3">Última Lectura</th>
+                                        <th class="p-3 text-center">Estado</th>
+                                        <th class="p-3 text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-devices-body" class="text-sm">
                                 </tbody>
                             </table>
                         </div>

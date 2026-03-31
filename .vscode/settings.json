@@ -1,3 +1,5 @@
 {
-    "liveServer.settings.port": 5501
+    "liveServer.settings.port": 5501,
+    "idf.currentSetup": "C:\\esp\\v6.0\\esp-idf",
+    "idf.portWin": "COM3"
 }
